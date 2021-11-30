@@ -23,8 +23,10 @@ public class SimpleDrive extends OpMode {
         rightBack = hardwareMap.get(DcMotor.class, "br");
         leftBack = hardwareMap.get(DcMotor.class, "bl");
 
-        //rightBack.setDirection(DcMotorSimple.Direction.REVERSE);
         rightFront.setDirection(DcMotorSimple.Direction.REVERSE);
+        leftFront.setDirection(DcMotorSimple.Direction.FORWARD);
+        rightBack.setDirection(DcMotorSimple.Direction.REVERSE);
+        leftBack.setDirection(DcMotorSimple.Direction.FORWARD);
 
 
     }
@@ -32,13 +34,45 @@ public class SimpleDrive extends OpMode {
     @Override
     public void loop() {
 
-        double drive = gamepad1.left_stick_y;
-        double turn = gamepad1.left_stick_x;
+        double forward = Math.pow(gamepad1.right_stick_y,2);
+        if (gamepad1.right_stick_y < 0) {
+            forward *= -1;
+        }
+        double strafe = Math.pow(gamepad1.left_stick_x,2);
+        if (gamepad1.left_stick_x < 0) {
+            strafe *= -1;
+        }
+        double turn = Math.pow(gamepad1.right_stick_x,2);
+        if (gamepad1.right_stick_x < 0) {
+            turn *= -1;
+        }
 
-        rightFront.setPower(drive + turn);
-        rightBack.setPower(drive + turn);
-        leftFront.setPower(drive - turn);
-        leftBack.setPower(drive - turn);
+        double angle = Math.atan2(forward, -strafe) - Math.PI/4;
+        double mag = Math.hypot(forward, -strafe);
+
+        double mod = 1;
+
+        if (gamepad1.right_bumper) {
+            mod = 0.5;
+        }
+
+        double lfPower = (mag * Math.cos(angle) + turn) * mod;
+        double rfPower = (mag * Math.sin(angle) - turn) * mod;
+        double lbPower = (mag * Math.sin(angle) + turn) * mod;
+        double rbPower = (mag * Math.cos(angle) - turn) * mod;
+
+
+
+
+
+
+
+        rightFront.setPower(rfPower);
+        rightBack.setPower(rbPower);
+        leftFront.setPower(lfPower);
+        leftBack.setPower(lbPower);
+
+
 
     }
 }
