@@ -42,10 +42,13 @@ public class AutonomousDrive extends LinearOpMode {
     static final double DRIVE_SPEED = 0.6;
     static final double TURN_SPEED = 0.5;
 
-    // Distance / Angles for autonomous
+    //Define movement constants here so we can change them dynamically in FTC Dashboard
     public static double MOVE_OFF_WALL = 4;
     public static double TURN_TOWARDS_C = 90;
     public static double MOVE_TOWARDS_WALL = -43;
+
+    // Time to wait between runs
+    public static double WAIT_TIME = 2000;
 
 
 
@@ -101,9 +104,6 @@ public class AutonomousDrive extends LinearOpMode {
         turnToPosition(TURN_TOWARDS_C);
         // Drive backwards to the carousel
         encoderDrive(MOVE_TOWARDS_WALL);
-
-
-
 
     }
 
@@ -162,7 +162,7 @@ public class AutonomousDrive extends LinearOpMode {
         hwDriveTrain.rightFront.setPower(0);
 
         // Idle for 5 seconds before continuing
-        double end_time = System.currentTimeMillis() + 5000;
+        double end_time = System.currentTimeMillis() + WAIT_TIME;
         while(opModeIsActive() && System.currentTimeMillis() < end_time) {
             telemetry.addData("Finished Turning", "Printing final values");
             telemetry.addData("Heading: ", current_angle);
@@ -196,13 +196,14 @@ public class AutonomousDrive extends LinearOpMode {
 
             while (opModeIsActive() && Math.abs(distance_error) > 25) {
 
-                distance_error = target_position - getAveragePosition();
+                distance_error = target_position - getAveragePosition(true);
 
                 double current_time = System.currentTimeMillis();
                 double dt = current_time - previous_time;
                 // Add distance error to integral if we're close to the target
                 if (distance_error < COUNTS_PER_INCH * MovingPIDConstants.MOVING_INTEGRAL_DISTANCE) {
-                    distance_integral += distance_error;
+                    distance_integral += distance_error * dt;
+                    telemetry.addData("Distance Integral:", distance_integral);
                 }
 
                 // Reset the previous time
@@ -223,7 +224,6 @@ public class AutonomousDrive extends LinearOpMode {
 
 
                 telemetry.addData("Distance Error:", distance_error);
-                telemetry.addData("Distance Integral:", distance_integral);
                 telemetry.addData("Heading Error:", heading_error);
                 telemetry.addData("base_power:", base_power);
                 telemetry.update();
@@ -234,10 +234,12 @@ public class AutonomousDrive extends LinearOpMode {
             hwDriveTrain.rightBack.setPower(0);
             hwDriveTrain.rightFront.setPower(0);
 
+            hwDriveTrain.resetEncoders();
+
             //  sleep(250);   // optional pause after each move
 
             // Idle for 5 seconds before continuing
-            double end_time = System.currentTimeMillis() + 5000;
+            double end_time = System.currentTimeMillis() + WAIT_TIME;
             while(opModeIsActive() && System.currentTimeMillis() < end_time) {
                 telemetry.addData("Finished Movement", "");
                 telemetry.addData("Distance Error:", distance_error);
@@ -250,14 +252,29 @@ public class AutonomousDrive extends LinearOpMode {
         }
     }
 
-
     private double getAveragePosition() {
-        return (hwDriveTrain.leftFront.getCurrentPosition() + hwDriveTrain.rightFront.getCurrentPosition() + hwDriveTrain.leftBack.getCurrentPosition() + hwDriveTrain.leftFront.getCurrentPosition()) / 4.0;
+        return getAveragePosition(false);
+    }
+
+    private double getAveragePosition(boolean debug) {
+        double leftFrontPos = hwDriveTrain.leftFront.getCurrentPosition();
+        double rightFrontPos = hwDriveTrain.rightFront.getCurrentPosition();
+        double leftBackPos = hwDriveTrain.leftBack.getCurrentPosition();
+        double rightBackPos = hwDriveTrain.rightBack.getCurrentPosition();
+
+        if (debug) {
+            telemetry.addData("Left Front Encoder: ", leftFrontPos);
+            telemetry.addData("Right Front Encoder: ", rightFrontPos);
+            telemetry.addData("Left Back Encoder: ", leftBackPos);
+            telemetry.addData("Right Back Encoder: ", rightBackPos);
+        }
+
+        return (leftFrontPos + rightFrontPos + leftBackPos + rightBackPos) / 4.0;
     }
 
 
-  public double getHeading() {
+    public double getHeading() {
       angles   = imu.getAngularOrientation(AxesReference.INTRINSIC, AxesOrder.ZYX, AngleUnit.DEGREES);
       return AngleUnit.DEGREES.fromUnit(angles.angleUnit, angles.firstAngle);
-  }
+    }
 }
