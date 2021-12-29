@@ -1,21 +1,31 @@
 package org.firstinspires.ftc.teamcode.Hardware;
 
+import static org.firstinspires.ftc.robotcore.external.BlocksOpModeCompanion.hardwareMap;
+import static org.firstinspires.ftc.robotcore.external.BlocksOpModeCompanion.telemetry;
+
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.hardware.DcMotor;
+import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.robotcore.hardware.HardwareMap;
+import com.qualcomm.robotcore.hardware.VoltageSensor;
 import com.qualcomm.robotcore.util.ElapsedTime;
 
 import org.firstinspires.ftc.robotcontroller.external.samples.HardwarePushbot;
+import org.firstinspires.ftc.robotcore.external.Telemetry;
+
+import java.util.ArrayList;
 
 public class HWDriveTrain {
-    public DcMotor leftFront;
-    public DcMotor rightFront;
-    public DcMotor leftBack;
-    public DcMotor rightBack;
+    public DcMotorEx leftFront;
+    public DcMotorEx rightFront;
+    public DcMotorEx leftBack;
+    public DcMotorEx rightBack;
 
     public  double slowDown = 1;
+
+    Telemetry telemetry;
 
     HardwareMap hwMap;
 
@@ -27,14 +37,19 @@ public class HWDriveTrain {
     static final double DRIVE_SPEED = 0.6;
     static final double TURN_SPEED = 0.5;
 
-    public void init(HardwareMap hwMap) {
+
+
+
+    public void init(HardwareMap hwMap, Telemetry telemetry) {
 
         this.hwMap = hwMap;
 
-        leftFront = hwMap.get(DcMotor.class, "fl");
-        rightFront = hwMap.get(DcMotor.class, "fr");
-        leftBack = hwMap.get(DcMotor.class, "bl");
-        rightBack = hwMap.get(DcMotor.class, "br");
+        this.telemetry = telemetry;
+
+        leftFront = (DcMotorEx) hwMap.get(DcMotor.class, "fl");
+        rightFront = (DcMotorEx) hwMap.get(DcMotor.class, "fr");
+        leftBack = (DcMotorEx) hwMap.get(DcMotor.class, "bl");
+        rightBack = (DcMotorEx) hwMap.get(DcMotor.class, "br");
 
         leftFront.setDirection(DcMotorSimple.Direction.FORWARD);
         rightFront.setDirection(DcMotorSimple.Direction.REVERSE);
@@ -96,6 +111,16 @@ public class HWDriveTrain {
         rightFront.setPower(rightFrontPower * slowDown);
         leftBack.setPower(leftBackPower * slowDown);
         rightBack.setPower(rightBackPower * slowDown);
+
+        ArrayList<Double> velocities = new ArrayList<>();
+        velocities.add(((DcMotorEx) leftFront).getVelocity());
+        velocities.add(((DcMotorEx) leftBack).getVelocity());
+        velocities.add(((DcMotorEx) rightFront).getVelocity());
+        velocities.add(((DcMotorEx) rightBack).getVelocity());
+
+        telemetry.addData("Wheel Velocities: ", velocities.toString());
+        telemetry.update();
+
     }
 
 
@@ -116,6 +141,17 @@ public class HWDriveTrain {
         rightFront.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
         rightBack.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
 
+    }
+
+    public double getBatteryVoltage() {
+        double result = Double.POSITIVE_INFINITY;
+        for (VoltageSensor sensor : hardwareMap.voltageSensor) {
+            double voltage = sensor.getVoltage();
+            if (voltage > 0) {
+                result = Math.min(result, voltage);
+            }
+        }
+        return result;
     }
 }
 

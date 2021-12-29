@@ -20,7 +20,7 @@ public class VelocityCalibration extends LinearOpMode {
 
         hwDriveTrain = new HWDriveTrain();
 
-        hwDriveTrain.init(this.hardwareMap);
+        hwDriveTrain.init(this.hardwareMap, telemetry);
 
         //voltageSensor = hardwareMap.voltageSensor.get("Motor Controller 1");
 

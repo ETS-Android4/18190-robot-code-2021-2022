@@ -34,6 +34,10 @@ public class AutonomousDrive extends LinearOpMode {
 
     public ElapsedTime runtime = new ElapsedTime();
 
+    // Save starting voltage
+    //double starting_voltage;
+
+
     static final double COUNTS_PER_MOTOR_REV = 537.7; // GoBuilda 5203 312 rpm
     static final double DRIVE_GEAR_REDUCTION = 1.0;     // This is < 1.0 if geared UP
     static final double WHEEL_DIAMETER_INCHES = 3.77953;     // For figuring circumference
@@ -50,6 +54,14 @@ public class AutonomousDrive extends LinearOpMode {
     // Time to wait between runs
     public static double WAIT_TIME = 2000;
 
+    private double leftFrontPos = 0;
+    private double rightFrontPos = 0;
+    private double leftBackPos = 0;
+    private double rightBackPos = 0;
+
+    // Voltage Modifier
+    // private double LOW_VOLTAGE = 12.8;
+    // private double VOLTAGE_SLOPE_DIVISOR = 6;
 
 
     @Override
@@ -57,7 +69,7 @@ public class AutonomousDrive extends LinearOpMode {
 
         hwDriveTrain = new HWDriveTrain();
 
-        hwDriveTrain.init(this.hardwareMap);
+        hwDriveTrain.init(this.hardwareMap, telemetry);
 
         //voltageSensor = hardwareMap.voltageSensor.get("Motor Controller 1");
 
@@ -97,6 +109,9 @@ public class AutonomousDrive extends LinearOpMode {
         telemetry.update();
 
         waitForStart();
+
+        // Save the initial voltage
+        //starting_voltage = hwDriveTrain.getBatteryVoltage();
 
         // Drive off the wall
         encoderDrive(MOVE_OFF_WALL);
@@ -194,9 +209,20 @@ public class AutonomousDrive extends LinearOpMode {
             double heading_error = 0;
             double base_power = 0;
 
+            // Compute a modifier to compensate for battery voltage
+            /*double voltage_modifier;
+            if (starting_voltage > LOW_VOLTAGE) {
+                voltage_modifier = ((starting_voltage - LOW_VOLTAGE) / VOLTAGE_SLOPE_DIVISOR) + 1;
+            }
+            else {
+                voltage_modifier = 1;
+            }
+            */
+
+
             while (opModeIsActive() && Math.abs(distance_error) > 25) {
 
-                distance_error = target_position - getAveragePosition(true);
+                distance_error = target_position - getAveragePosition();
 
                 double current_time = System.currentTimeMillis();
                 double dt = current_time - previous_time;
@@ -222,6 +248,12 @@ public class AutonomousDrive extends LinearOpMode {
                 hwDriveTrain.rightBack.setPower(base_power - rotation_power);
                 hwDriveTrain.rightFront.setPower(base_power - rotation_power);
 
+                //telemetry.addData("Voltage: ", starting_voltage);
+
+                telemetry.addData("Left Front Encoder: ", leftFrontPos);
+                telemetry.addData("Right Front Encoder: ", rightFrontPos);
+                telemetry.addData("Left Back Encoder: ", leftBackPos);
+                telemetry.addData("Right Back Encoder: ", rightBackPos);
 
                 telemetry.addData("Distance Error:", distance_error);
                 telemetry.addData("Heading Error:", heading_error);
@@ -248,7 +280,6 @@ public class AutonomousDrive extends LinearOpMode {
                 telemetry.addData("base_power:", base_power);
                 telemetry.update();
             }
-
         }
     }
 
@@ -271,7 +302,6 @@ public class AutonomousDrive extends LinearOpMode {
 
         return (leftFrontPos + rightFrontPos + leftBackPos + rightBackPos) / 4.0;
     }
-
 
     public double getHeading() {
       angles   = imu.getAngularOrientation(AxesReference.INTRINSIC, AxesOrder.ZYX, AngleUnit.DEGREES);

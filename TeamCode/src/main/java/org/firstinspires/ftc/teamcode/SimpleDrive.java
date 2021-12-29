@@ -12,7 +12,7 @@ public class SimpleDrive extends OpMode {
     @Override
     public void init() {
         hwDriveTrain = new HWDriveTrain();
-        hwDriveTrain.init(hardwareMap);
+        hwDriveTrain.init(hardwareMap, telemetry);
     }
 
     @Override
