@@ -8,7 +8,6 @@ import com.qualcomm.hardware.bosch.JustLoggingAccelerationIntegrator;
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.hardware.DcMotor;
-import com.qualcomm.robotcore.hardware.HardwareMap;
 import com.qualcomm.robotcore.hardware.VoltageSensor;
 import com.qualcomm.robotcore.util.ElapsedTime;
 
@@ -16,7 +15,11 @@ import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 import org.firstinspires.ftc.robotcore.external.navigation.AxesOrder;
 import org.firstinspires.ftc.robotcore.external.navigation.AxesReference;
 import org.firstinspires.ftc.robotcore.external.navigation.Orientation;
+
 import org.firstinspires.ftc.teamcode.Hardware.HWDriveTrain;
+import org.firstinspires.ftc.teamcode.Hardware.Constants.MovingPIDConstants;
+import org.firstinspires.ftc.teamcode.Hardware.Constants.TurningPIDConstants;
+
 
 @Config
 @Autonomous(name = "autonomousDrive")
@@ -31,7 +34,7 @@ public class AutonomousDrive extends LinearOpMode {
 
     public ElapsedTime runtime = new ElapsedTime();
 
-    static final double COUNTS_PER_MOTOR_REV = 537.7;    // eg: TETRIX Motor Encoder
+    static final double COUNTS_PER_MOTOR_REV = 537.7; // GoBuilda 5203 312 rpm
     static final double DRIVE_GEAR_REDUCTION = 1.0;     // This is < 1.0 if geared UP
     static final double WHEEL_DIAMETER_INCHES = 3.77953;     // For figuring circumference
     static final double COUNTS_PER_INCH = (COUNTS_PER_MOTOR_REV * DRIVE_GEAR_REDUCTION) /
@@ -39,21 +42,10 @@ public class AutonomousDrive extends LinearOpMode {
     static final double DRIVE_SPEED = 0.6;
     static final double TURN_SPEED = 0.5;
 
-
-
-    public static double TURNING_Kp = 0.013;
-    public static double TURNING_Ki = 0.000002;
-
-    public static double MOVING_Kp = 0.0018;
-
-    public static double HOLD_HEADING_Kp = 0.01;
-
-
     // Distance / Angles for autonomous
-
     public static double MOVE_OFF_WALL = 4;
     public static double TURN_TOWARDS_C = 90;
-    public static double MOVE_TOWARDS_WALL = -50;
+    public static double MOVE_TOWARDS_WALL = -43;
 
 
 
@@ -104,11 +96,11 @@ public class AutonomousDrive extends LinearOpMode {
         waitForStart();
 
         // Drive off the wall
-        encoderDrive(4);
+        encoderDrive(MOVE_OFF_WALL);
         // Turn left so the back of the robot faces the carousel
-        turnToPosition(90);
+        turnToPosition(TURN_TOWARDS_C);
         // Drive backwards to the carousel
-        encoderDrive(-50);
+        encoderDrive(MOVE_TOWARDS_WALL);
 
 
 
@@ -137,7 +129,7 @@ public class AutonomousDrive extends LinearOpMode {
 
             integral += error * time_elapsed;
 
-            double power = error * TURNING_Kp + integral * TURNING_Ki;
+            double power = error * TurningPIDConstants.TURNING_KP + integral * TurningPIDConstants.TURNING_KI;
 
             hwDriveTrain.leftBack.setPower(power);
             hwDriveTrain.leftFront.setPower(power);
@@ -147,9 +139,9 @@ public class AutonomousDrive extends LinearOpMode {
             last_loop_time = current_loop_time;
 
             // Set a cap on the integral value so it doesn't go crazy at the start of the rotation
-            if (Math.abs(integral * TURNING_Ki) > 1) {
+            if (Math.abs(integral * TurningPIDConstants.TURNING_KI) > 1) {
                 // Set the integral to a value that will produce a "1" for power
-                integral = 1 / TURNING_Ki;
+                integral = 1 / TurningPIDConstants.TURNING_KI;
             }
 
 
@@ -157,7 +149,7 @@ public class AutonomousDrive extends LinearOpMode {
             telemetry.addData("Error: ", error);
             telemetry.addData("Power: ", power);
             telemetry.addData("Integral: ", integral);
-            telemetry.addData("Integral * Ki: ", integral * TURNING_Ki);
+            telemetry.addData("Integral * Ki: ", integral * TurningPIDConstants.TURNING_KI);
             telemetry.addData("Time Elapsed: ", time_elapsed);
             telemetry.update();
 
@@ -169,11 +161,15 @@ public class AutonomousDrive extends LinearOpMode {
         hwDriveTrain.rightBack.setPower(0);
         hwDriveTrain.rightFront.setPower(0);
 
-        telemetry.addData("Finished Turning", "Printing final values");
-        telemetry.addData("Heading: ", current_angle);
-        telemetry.addData("Error: ", error);
-        telemetry.addData("Integral: ", integral);
-        telemetry.update();
+        // Idle for 5 seconds before continuing
+        double end_time = System.currentTimeMillis() + 5000;
+        while(opModeIsActive() && System.currentTimeMillis() < end_time) {
+            telemetry.addData("Finished Turning", "Printing final values");
+            telemetry.addData("Heading: ", current_angle);
+            telemetry.addData("Error: ", error);
+            telemetry.addData("Integral: ", integral);
+            telemetry.update();
+        }
     }
 
 
@@ -187,19 +183,38 @@ public class AutonomousDrive extends LinearOpMode {
             // Determine new target position, and pass to motor controller
             target_position = getAveragePosition() - (inches * COUNTS_PER_INCH);
 
-            double distanceError = target_position - getAveragePosition();
+            double distance_error = target_position - getAveragePosition();
 
             double target_direction = getHeading();
 
+            double distance_integral = 0;
 
-            while (opModeIsActive() && Math.abs(distanceError) > 25) {
+            double previous_time = System.currentTimeMillis();
 
-                distanceError = target_position - getAveragePosition();
-                double base_power = distanceError * MOVING_Kp;
+            double heading_error = 0;
+            double base_power = 0;
+
+            while (opModeIsActive() && Math.abs(distance_error) > 25) {
+
+                distance_error = target_position - getAveragePosition();
+
+                double current_time = System.currentTimeMillis();
+                double dt = current_time - previous_time;
+                // Add distance error to integral if we're close to the target
+                if (distance_error < COUNTS_PER_INCH * MovingPIDConstants.MOVING_INTEGRAL_DISTANCE) {
+                    distance_integral += distance_error;
+                }
+
+                // Reset the previous time
+                previous_time = current_time;
+
+                base_power = distance_error * MovingPIDConstants.MOVING_KP + distance_integral * MovingPIDConstants.MOVING_KI;
 
                 // Make power adjustments based on angle drift
-                double heading_error = target_direction - getHeading();
-                double rotation_power = heading_error * HOLD_HEADING_Kp;
+                heading_error = target_direction - getHeading();
+                double rotation_power = heading_error * MovingPIDConstants.HOLD_HEADING_KP;
+
+
 
                 hwDriveTrain.leftBack.setPower(base_power + rotation_power);
                 hwDriveTrain.leftFront.setPower(base_power + rotation_power);
@@ -207,7 +222,9 @@ public class AutonomousDrive extends LinearOpMode {
                 hwDriveTrain.rightFront.setPower(base_power - rotation_power);
 
 
-                telemetry.addData("Error:", distanceError);
+                telemetry.addData("Distance Error:", distance_error);
+                telemetry.addData("Distance Integral:", distance_integral);
+                telemetry.addData("Heading Error:", heading_error);
                 telemetry.addData("base_power:", base_power);
                 telemetry.update();
             }
@@ -218,6 +235,18 @@ public class AutonomousDrive extends LinearOpMode {
             hwDriveTrain.rightFront.setPower(0);
 
             //  sleep(250);   // optional pause after each move
+
+            // Idle for 5 seconds before continuing
+            double end_time = System.currentTimeMillis() + 5000;
+            while(opModeIsActive() && System.currentTimeMillis() < end_time) {
+                telemetry.addData("Finished Movement", "");
+                telemetry.addData("Distance Error:", distance_error);
+                telemetry.addData("Distance Integral:", distance_integral);
+                telemetry.addData("Heading Error:", heading_error);
+                telemetry.addData("base_power:", base_power);
+                telemetry.update();
+            }
+
         }
     }
 
@@ -231,6 +260,4 @@ public class AutonomousDrive extends LinearOpMode {
       angles   = imu.getAngularOrientation(AxesReference.INTRINSIC, AxesOrder.ZYX, AngleUnit.DEGREES);
       return AngleUnit.DEGREES.fromUnit(angles.angleUnit, angles.firstAngle);
   }
-
-
 }
