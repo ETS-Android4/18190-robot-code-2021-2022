@@ -1,5 +1,8 @@
 package org.firstinspires.ftc.teamcode.Autonomous;
 
+import com.acmerobotics.dashboard.FtcDashboard;
+import com.acmerobotics.dashboard.config.Config;
+import com.acmerobotics.dashboard.telemetry.MultipleTelemetry;
 import com.qualcomm.hardware.bosch.BNO055IMU;
 import com.qualcomm.hardware.bosch.JustLoggingAccelerationIntegrator;
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
@@ -15,7 +18,7 @@ import org.firstinspires.ftc.robotcore.external.navigation.AxesReference;
 import org.firstinspires.ftc.robotcore.external.navigation.Orientation;
 import org.firstinspires.ftc.teamcode.Hardware.HWDriveTrain;
 
-
+@Config
 @Autonomous(name = "autonomousDrive")
 public class AutonomousDrive extends LinearOpMode {
     HWDriveTrain hwDriveTrain;
@@ -28,17 +31,30 @@ public class AutonomousDrive extends LinearOpMode {
 
     public ElapsedTime runtime = new ElapsedTime();
 
-    static final double COUNTS_PER_MOTOR_REV = 1440;    // eg: TETRIX Motor Encoder
-    static final double DRIVE_GEAR_REDUCTION = 2.0;     // This is < 1.0 if geared UP
-    static final double WHEEL_DIAMETER_INCHES = 4.0;     // For figuring circumference
+    static final double COUNTS_PER_MOTOR_REV = 537.7;    // eg: TETRIX Motor Encoder
+    static final double DRIVE_GEAR_REDUCTION = 1.0;     // This is < 1.0 if geared UP
+    static final double WHEEL_DIAMETER_INCHES = 3.77953;     // For figuring circumference
     static final double COUNTS_PER_INCH = (COUNTS_PER_MOTOR_REV * DRIVE_GEAR_REDUCTION) /
-            (WHEEL_DIAMETER_INCHES * 3.1415);
+            (WHEEL_DIAMETER_INCHES * Math.PI);
     static final double DRIVE_SPEED = 0.6;
     static final double TURN_SPEED = 0.5;
 
 
-    static final double TURNING_Kp = 0.012;
-    static final double TURNING_Ki = 0.000002;
+
+    public static double TURNING_Kp = 0.013;
+    public static double TURNING_Ki = 0.000002;
+
+    public static double MOVING_Kp = 0.0018;
+
+    public static double HOLD_HEADING_Kp = 0.01;
+
+
+    // Distance / Angles for autonomous
+
+    public static double MOVE_OFF_WALL = 4;
+    public static double TURN_TOWARDS_C = 90;
+    public static double MOVE_TOWARDS_WALL = -50;
+
 
 
     @Override
@@ -48,8 +64,9 @@ public class AutonomousDrive extends LinearOpMode {
 
         hwDriveTrain.init(this.hardwareMap);
 
-        voltageSensor = hardwareMap.voltageSensor.get("Motor Controller 1");
+        //voltageSensor = hardwareMap.voltageSensor.get("Motor Controller 1");
 
+        telemetry = new MultipleTelemetry(telemetry, FtcDashboard.getInstance().getTelemetry());
 
         telemetry.addData("Status", "Resetting Encoders");    //
         telemetry.update();
@@ -86,7 +103,12 @@ public class AutonomousDrive extends LinearOpMode {
 
         waitForStart();
 
+        // Drive off the wall
+        encoderDrive(4);
+        // Turn left so the back of the robot faces the carousel
         turnToPosition(90);
+        // Drive backwards to the carousel
+        encoderDrive(-50);
 
 
 
@@ -155,66 +177,55 @@ public class AutonomousDrive extends LinearOpMode {
     }
 
 
-    public void encoderDrive(double speed,
-                             double leftInches, double rightInches,
-                             double timeoutS) {
-        int newLeftFrontTarget;
-        int newRightFrontTarget;
-        int newLeftBackTarget;
-        int newRightBackTarget;
+    public void encoderDrive(double inches) {
+
+        double target_position;
 
         // Ensure that the opmode is still active
         if (opModeIsActive()) {
-/*
+
             // Determine new target position, and pass to motor controller
-            newLeftFrontTarget = hwDriveTrain.leftFront.getCurrentPosition() + (int)(leftInches * COUNTS_PER_INCH);
-            newRightFrontTarget = hwDriveTrain.rightFront.getCurrentPosition() + (int)(rightInches * COUNTS_PER_INCH);
-            newLeftBackTarget = hwDriveTrain.leftBack.getCurrentPosition() + (int)(rightInches * COUNTS_PER_INCH);
-            newRightBackTarget = hwDriveTrain.rightBack.getCurrentPosition() + (int)(rightInches * COUNTS_PER_INCH);
+            target_position = getAveragePosition() - (inches * COUNTS_PER_INCH);
 
-            hwDriveTrain.leftFront.setTargetPosition(newLeftFrontTarget);
-            hwDriveTrain.rightFront.setTargetPosition(newRightFrontTarget);
-            hwDriveTrain.leftBack.setTargetPosition(newLeftBackTarget);
-            hwDriveTrain.rightBack.setTargetPosition(newRightBackTarget);
+            double distanceError = target_position - getAveragePosition();
 
-            // Turn On RUN_TO_POSITION
-            hwDriveTrain.leftDrive.setMode(DcMotor.RunMode.RUN_TO_POSITION);
-            hwDriveTrain.rightDrive.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+            double target_direction = getHeading();
 
-            // reset the timeout time and start motion.
-            runtime.reset();
-            hwDriveTrain.leftDrive.setPower(Math.abs(speed));
-            hwDriveTrain.rightDrive.setPower(Math.abs(speed));
 
-            // keep looping while we are still active, and there is time left, and both motors are running.
-            // Note: We use (isBusy() && isBusy()) in the loop test, which means that when EITHER motor hits
-            // its target position, the motion will stop.  This is "safer" in the event that the robot will
-            // always end the motion as soon as possible.
-            // However, if you require that BOTH motors have finished their moves before the robot continues
-            // onto the next step, use (isBusy() || isBusy()) in the loop test.
-            while (opModeIsActive() &&
-                    (runtime.seconds() < timeoutS) &&
-                    (hwDriveTrain.leftDrive.isBusy() && hwDriveTrain.rightDrive.isBusy())) {
+            while (opModeIsActive() && Math.abs(distanceError) > 25) {
 
-                // Display it for the driver.
-                telemetry.addData("Path1",  "Running to %7d :%7d", newLeftTarget,  newRightTarget);
-                telemetry.addData("Path2",  "Running at %7d :%7d",
-                        hwDriveTrain.leftDrive.getCurrentPosition(),
-                        hwDriveTrain.rightDrive.getCurrentPosition());
+                distanceError = target_position - getAveragePosition();
+                double base_power = distanceError * MOVING_Kp;
+
+                // Make power adjustments based on angle drift
+                double heading_error = target_direction - getHeading();
+                double rotation_power = heading_error * HOLD_HEADING_Kp;
+
+                hwDriveTrain.leftBack.setPower(base_power + rotation_power);
+                hwDriveTrain.leftFront.setPower(base_power + rotation_power);
+                hwDriveTrain.rightBack.setPower(base_power - rotation_power);
+                hwDriveTrain.rightFront.setPower(base_power - rotation_power);
+
+
+                telemetry.addData("Error:", distanceError);
+                telemetry.addData("base_power:", base_power);
                 telemetry.update();
             }
 
-            // Stop all motion;
-            hwDriveTrain.leftDrive.setPower(0);
-            hwDriveTrain.rightDrive.setPower(0);
+            hwDriveTrain.leftBack.setPower(0);
+            hwDriveTrain.leftFront.setPower(0);
+            hwDriveTrain.rightBack.setPower(0);
+            hwDriveTrain.rightFront.setPower(0);
 
-            // Turn off RUN_TO_POSITION
-            hwDriveTrain.leftDrive.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
-            hwDriveTrain.rightDrive.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
-*/
             //  sleep(250);   // optional pause after each move
         }
     }
+
+
+    private double getAveragePosition() {
+        return (hwDriveTrain.leftFront.getCurrentPosition() + hwDriveTrain.rightFront.getCurrentPosition() + hwDriveTrain.leftBack.getCurrentPosition() + hwDriveTrain.leftFront.getCurrentPosition()) / 4.0;
+    }
+
 
   public double getHeading() {
       angles   = imu.getAngularOrientation(AxesReference.INTRINSIC, AxesOrder.ZYX, AngleUnit.DEGREES);

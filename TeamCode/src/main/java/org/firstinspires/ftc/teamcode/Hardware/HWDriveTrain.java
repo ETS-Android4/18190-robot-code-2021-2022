@@ -56,10 +56,6 @@ public class HWDriveTrain {
         double headingPower = 0;
         double headingAngle = 0;
         double turn = x2 * 0.5;
-        double leftFrontPowerScaled;
-        double rightFrontPowerScaled;
-        double leftBackPowerScaled;
-        double rightBackPowerScaled;
 
         leftFront.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
         rightFront.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
@@ -67,19 +63,19 @@ public class HWDriveTrain {
         rightBack.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
 
         //Convert cartesian coordinates to polar coordinates
-        if (x1 != 0 && y1 != 0) {
-            headingPower = Math.min(Math.hypot(x1, y1), 1);
-            headingAngle = Math.atan2(x1, y1);
-        }
+        headingPower = Math.hypot(x1, -y1);
+        headingAngle = Math.atan2(x1, -y1)  + Math.PI/4;
 
         slowDown = isSlowdown ? 0.5 : 1;
 
-        double leftFrontPowerRaw = (headingPower * Math.cos(headingAngle) - turn);
-        double rightFrontPowerRaw = (headingPower * Math.sin(headingAngle) - turn);
-        double leftBackPowerRaw = (headingPower * Math.sin(headingAngle) - turn);
-        double rightBackPowerRaw = (headingPower * Math.cos(headingAngle) - turn);
+        double leftFrontPower = (headingPower * Math.cos(headingAngle) - turn);
+        double rightFrontPower = (headingPower * Math.sin(headingAngle) + turn);
+        double leftBackPower = (headingPower * Math.sin(headingAngle) - turn);
+        double rightBackPower = (headingPower * Math.cos(headingAngle) + turn);
 
-        double maxPowerRaw = Math.max(Math.abs(leftFrontPowerRaw), Math.max(Math.abs(rightFrontPowerRaw), Math.max(Math.abs(leftBackPowerRaw), Math.abs(rightBackPowerRaw))));
+        //double maxPowerRaw = Math.max(Math.abs(leftFrontPowerRaw), Math.max(Math.abs(rightFrontPowerRaw), Math.max(Math.abs(leftBackPowerRaw), Math.abs(rightBackPowerRaw))));
+
+        /*
 
         if (maxPowerRaw > 1) {
             leftFrontPowerScaled = leftFrontPowerRaw / maxPowerRaw;
@@ -93,10 +89,13 @@ public class HWDriveTrain {
             rightBackPowerScaled = rightBackPowerRaw;
         }
 
-        leftFront.setPower(leftFrontPowerScaled * slowDown);
-        rightFront.setPower(rightFrontPowerScaled * slowDown);
-        leftBack.setPower(leftBackPowerScaled * slowDown);
-        rightBack.setPower(rightBackPowerScaled * slowDown);
+         */
+
+
+        leftFront.setPower(leftFrontPower * slowDown);
+        rightFront.setPower(rightFrontPower * slowDown);
+        leftBack.setPower(leftBackPower * slowDown);
+        rightBack.setPower(rightBackPower * slowDown);
     }
 
     public  void move(double distance){
