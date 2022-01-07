@@ -14,11 +14,16 @@ import com.qualcomm.robotcore.util.ElapsedTime;
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 import org.firstinspires.ftc.robotcore.external.navigation.AxesOrder;
 import org.firstinspires.ftc.robotcore.external.navigation.AxesReference;
+import org.firstinspires.ftc.robotcore.external.navigation.CurrentUnit;
 import org.firstinspires.ftc.robotcore.external.navigation.Orientation;
 
-import org.firstinspires.ftc.teamcode.Hardware.HWDriveTrain;
 import org.firstinspires.ftc.teamcode.Hardware.Constants.MovingPIDConstants;
+import org.firstinspires.ftc.teamcode.Hardware.Constants.MovingPIDConstantsWithVelocity;
+import org.firstinspires.ftc.teamcode.Hardware.HWDriveTrain;
+import org.firstinspires.ftc.teamcode.Hardware.Constants.MovingPIDConstantsNoVelocity;
 import org.firstinspires.ftc.teamcode.Hardware.Constants.TurningPIDConstants;
+
+import java.util.ArrayList;
 
 
 @Config
@@ -46,9 +51,20 @@ public class AutonomousDrive extends LinearOpMode {
     static final double DRIVE_SPEED = 0.6;
     static final double TURN_SPEED = 0.5;
 
+
+    static final double DRIVE_MOTOR_RPM = 312;
+    static final double DRIVE_MOTOR_RPS = DRIVE_MOTOR_RPM / 60;
+
+    // The real maximum speed achievable by our robot, measured in encoder counts per second
+    static final double MEASURED_MAXIMUM_TPS = 1400;
+    // The theoretical max TPS of the motor
+    static final double THEORETICAL_MAX_TPS = DRIVE_MOTOR_RPS * COUNTS_PER_MOTOR_REV;
+
+    static final double DRIVE_MOTOR_SPEED_ADJUSTMENT = MEASURED_MAXIMUM_TPS / THEORETICAL_MAX_TPS;
+
     //Define movement constants here so we can change them dynamically in FTC Dashboard
-    public static double MOVE_OFF_WALL = 4;
-    public static double TURN_TOWARDS_C = 90;
+    public static double MOVE_OFF_WALL = 3;
+    public static double TURN_TOWARDS_C = 87;
     public static double MOVE_TOWARDS_WALL = -43;
 
     // Time to wait between runs
@@ -120,6 +136,29 @@ public class AutonomousDrive extends LinearOpMode {
         // Drive backwards to the carousel
         encoderDrive(MOVE_TOWARDS_WALL);
 
+        // Drive forward a little further
+        hwDriveTrain.rightBack.setPower(0.5);
+        hwDriveTrain.leftBack.setPower(0.5);
+        hwDriveTrain.rightFront.setPower(0.5);
+        hwDriveTrain.leftFront.setPower(0.5);
+        robotWait(500);
+        hwDriveTrain.rightBack.setPower(0);
+        hwDriveTrain.leftBack.setPower(0);
+        hwDriveTrain.rightFront.setPower(0);
+        hwDriveTrain.leftFront.setPower(0);
+
+        // Spin the carousel motor
+        hwDriveTrain.duckMotor.setPower(1);
+        robotWait(5000);
+        hwDriveTrain.duckMotor.setPower(1);
+
+    }
+
+    public void robotWait(double time) {
+        double start_time = System.currentTimeMillis();
+        while(opModeIsActive() && System.currentTimeMillis() - start_time < time) {
+            idle();
+        }
     }
 
     public void turnToPosition(double target) {
@@ -144,7 +183,7 @@ public class AutonomousDrive extends LinearOpMode {
 
             integral += error * time_elapsed;
 
-            double power = error * TurningPIDConstants.TURNING_KP + integral * TurningPIDConstants.TURNING_KI;
+            double power = error * (TurningPIDConstants.TURNING_KP / 3) + integral * TurningPIDConstants.TURNING_KI;
 
             hwDriveTrain.leftBack.setPower(power);
             hwDriveTrain.leftFront.setPower(power);
@@ -187,8 +226,29 @@ public class AutonomousDrive extends LinearOpMode {
         }
     }
 
-
     public void encoderDrive(double inches) {
+        encoderDrive(inches, false);
+    }
+
+    public void encoderDrive(double inches, boolean use_velocity) {
+        MovingPIDConstants pid_constants;
+        // Set up constants based on globals and chosen mode
+        if (use_velocity) {
+            pid_constants = new MovingPIDConstantsWithVelocity();
+
+            hwDriveTrain.leftFront.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+            hwDriveTrain.rightFront.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+            hwDriveTrain.leftBack.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+            hwDriveTrain.rightBack.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+        }
+        else {
+            pid_constants = new MovingPIDConstantsNoVelocity();
+
+            hwDriveTrain.leftFront.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+            hwDriveTrain.rightFront.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+            hwDriveTrain.leftBack.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+            hwDriveTrain.rightBack.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+        }
 
         double target_position;
 
@@ -209,17 +269,6 @@ public class AutonomousDrive extends LinearOpMode {
             double heading_error = 0;
             double base_power = 0;
 
-            // Compute a modifier to compensate for battery voltage
-            /*double voltage_modifier;
-            if (starting_voltage > LOW_VOLTAGE) {
-                voltage_modifier = ((starting_voltage - LOW_VOLTAGE) / VOLTAGE_SLOPE_DIVISOR) + 1;
-            }
-            else {
-                voltage_modifier = 1;
-            }
-            */
-
-
             while (opModeIsActive() && Math.abs(distance_error) > 25) {
 
                 distance_error = target_position - getAveragePosition();
@@ -227,7 +276,7 @@ public class AutonomousDrive extends LinearOpMode {
                 double current_time = System.currentTimeMillis();
                 double dt = current_time - previous_time;
                 // Add distance error to integral if we're close to the target
-                if (distance_error < COUNTS_PER_INCH * MovingPIDConstants.MOVING_INTEGRAL_DISTANCE) {
+                if (distance_error < COUNTS_PER_INCH * pid_constants.MOVING_INTEGRAL_DISTANCE) {
                     distance_integral += distance_error * dt;
                     telemetry.addData("Distance Integral:", distance_integral);
                 }
@@ -235,13 +284,11 @@ public class AutonomousDrive extends LinearOpMode {
                 // Reset the previous time
                 previous_time = current_time;
 
-                base_power = distance_error * MovingPIDConstants.MOVING_KP + distance_integral * MovingPIDConstants.MOVING_KI;
+                base_power = distance_error * pid_constants.MOVING_KP + distance_integral * pid_constants.MOVING_KI;
 
                 // Make power adjustments based on angle drift
                 heading_error = target_direction - getHeading();
-                double rotation_power = heading_error * MovingPIDConstants.HOLD_HEADING_KP;
-
-
+                double rotation_power = heading_error * pid_constants.HOLD_HEADING_KP;
 
                 hwDriveTrain.leftBack.setPower(base_power + rotation_power);
                 hwDriveTrain.leftFront.setPower(base_power + rotation_power);
@@ -258,6 +305,15 @@ public class AutonomousDrive extends LinearOpMode {
                 telemetry.addData("Distance Error:", distance_error);
                 telemetry.addData("Heading Error:", heading_error);
                 telemetry.addData("base_power:", base_power);
+
+                // Show motor current usage
+                ArrayList<Double> currents = new ArrayList<>();
+                currents.add(hwDriveTrain.leftFront.getCurrent(CurrentUnit.MILLIAMPS));
+                currents.add(hwDriveTrain.leftBack.getCurrent(CurrentUnit.MILLIAMPS));
+                currents.add(hwDriveTrain.rightFront.getCurrent(CurrentUnit.MILLIAMPS));
+                currents.add(hwDriveTrain.rightBack.getCurrent(CurrentUnit.MILLIAMPS));
+
+                telemetry.addData("Drive Motor Currents: ", currents.toString());
                 telemetry.update();
             }
 

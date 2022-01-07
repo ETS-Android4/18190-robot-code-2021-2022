@@ -23,20 +23,13 @@ public class HWDriveTrain {
     public DcMotorEx leftBack;
     public DcMotorEx rightBack;
 
+    public DcMotorEx duckMotor;
+
     public  double slowDown = 1;
 
     Telemetry telemetry;
 
     HardwareMap hwMap;
-
-    static final double COUNTS_PER_MOTOR_REV = 1440;
-    static final double DRIVE_GEAR_REDUCTION = 2.0;
-    static final double WHEEL_DIAMETER_IN_INCHES = 4.0;
-    static final double COUNTS_PER_INCH = (COUNTS_PER_MOTOR_REV * DRIVE_GEAR_REDUCTION) /
-            (WHEEL_DIAMETER_IN_INCHES * Math.PI);
-    static final double DRIVE_SPEED = 0.6;
-    static final double TURN_SPEED = 0.5;
-
 
 
 
@@ -51,6 +44,8 @@ public class HWDriveTrain {
         leftBack = (DcMotorEx) hwMap.get(DcMotor.class, "bl");
         rightBack = (DcMotorEx) hwMap.get(DcMotor.class, "br");
 
+        duckMotor = (DcMotorEx) hwMap.get(DcMotor.class, "duck");
+
         leftFront.setDirection(DcMotorSimple.Direction.FORWARD);
         rightFront.setDirection(DcMotorSimple.Direction.REVERSE);
         leftBack.setDirection(DcMotorSimple.Direction.FORWARD);
@@ -60,11 +55,15 @@ public class HWDriveTrain {
         rightFront.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
         leftBack.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
         rightBack.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+        duckMotor.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+
+        duckMotor.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
 
         leftFront.setPower(0);
         rightFront.setPower(0);
         leftBack.setPower(0);
         rightBack.setPower(0);
+        duckMotor.setPower(0);
     }
 
     public void teleOpMove(double y1, double x1, double x2, boolean isSlowdown) {
