@@ -79,6 +79,8 @@ public class HWDriveTrain {
         rightBack.setPower(0);
         duckMotor.setPower(0);
 
+        armMotor.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+
         //collector.setPower(0);
     }
 

@@ -27,19 +27,20 @@ public class SimpleDrive extends OpMode {
         }
 
         // Arm Control
-        double armPower = gamepad2.left_stick_y * 0.5;
+        double armPower = gamepad2.left_stick_y * 0.15;
         if (Math.abs(armPower) < 0.1) {
             armPower = 0;
         }
         hwDriveTrain.armMotor.setPower(armPower);
 
         double collectorPower;
+        double driveExp = 1.5;
         // Collection
         if (gamepad2.right_stick_y > 0) {
             collectorPower = Math.log(gamepad2.right_stick_y + 1) * 3.4;
         }
         else if (gamepad2.right_stick_y < 0) {
-            collectorPower = -Math.log(Math.abs(gamepad2.right_stick_y) + 1) * 3.4;
+            collectorPower = -Math.pow(gamepad2.right_stick_y, driveExp) / Math.pow(1, driveExp);
         }
         else{
             collectorPower = 0;
