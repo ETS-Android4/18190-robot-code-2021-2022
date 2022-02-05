@@ -2,6 +2,7 @@ package org.firstinspires.ftc.teamcode.Hardware;
 
 import static org.firstinspires.ftc.robotcore.external.BlocksOpModeCompanion.hardwareMap;
 
+import com.qualcomm.hardware.bosch.BNO055IMU;
 import com.qualcomm.robotcore.hardware.CRServo;
 import com.qualcomm.robotcore.hardware.CRServoImplEx;
 import com.qualcomm.robotcore.hardware.DcMotor;
@@ -12,9 +13,19 @@ import com.qualcomm.robotcore.hardware.Servo;
 import com.qualcomm.robotcore.hardware.VoltageSensor;
 
 import org.firstinspires.ftc.robotcore.external.Telemetry;
+import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
+import org.firstinspires.ftc.robotcore.external.navigation.AxesOrder;
+import org.firstinspires.ftc.robotcore.external.navigation.AxesReference;
+import org.firstinspires.ftc.robotcore.external.navigation.Orientation;
+import org.firstinspires.ftc.teamcode.Hardware.Constants.MovingPIDConstants;
+import org.firstinspires.ftc.teamcode.Hardware.Constants.MovingPIDConstantsNoVelocity;
+import org.firstinspires.ftc.teamcode.Hardware.Constants.MovingPIDConstantsWithVelocity;
 
 
 public class HWDriveTrain {
+
+    public static double ARM_KP = 0.001;
+
     public DcMotorEx leftFront;
     public DcMotorEx rightFront;
     public DcMotorEx leftBack;
@@ -28,10 +39,17 @@ public class HWDriveTrain {
 
     public  double slowDown = 1;
 
-    Telemetry telemetry;
+    public Telemetry telemetry;
 
-    HardwareMap hwMap;
+    public HardwareMap hwMap;
 
+    public double armTargetPosition;
+
+    public double armError;
+
+    public BNO055IMU imu;
+
+    public Orientation angles;
 
 
     public void init(HardwareMap hwMap, Telemetry telemetry) {
@@ -39,6 +57,8 @@ public class HWDriveTrain {
         this.hwMap = hwMap;
 
         this.telemetry = telemetry;
+
+        armTargetPosition = 0;
 
         leftFront = (DcMotorEx) hwMap.get(DcMotor.class, "fl");
         rightFront = (DcMotorEx) hwMap.get(DcMotor.class, "fr");
@@ -48,6 +68,7 @@ public class HWDriveTrain {
         duckMotor = (DcMotorEx) hwMap.get(DcMotor.class, "duck");
 
         armMotor = (DcMotorEx) hwMap.get(DcMotor.class, "arm");
+
 
         //collector = hwMap.crservo.get("collector");
         collector = hwMap.crservo.get("collector");
@@ -126,5 +147,38 @@ public class HWDriveTrain {
         rightBack.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
 
     }
+
+    public void setArmPower() {
+        double armPosition = armMotor.getCurrentPosition();
+        armError = armTargetPosition - armPosition;
+        double armMotorPower = armError * ARM_KP;
+        armMotor.setPower(armMotorPower);
+
+        telemetry.addData("Arm Error", armError);
+        telemetry.addData("Arm Position", armPosition);
+        telemetry.addData("Arm Power", armMotorPower);
+        telemetry.addData("Arm Target Position", armTargetPosition);
+    }
+
+    public void armToTopGoal() {
+        armTargetPosition = -1884;
+    }
+
+    public void armToMiddleGoal() {
+        armTargetPosition = -2206;
+    }
+
+    public void armToBottomGoal() {
+        armTargetPosition = -2358;
+    }
+
+    public void armToDrivingPosition() {
+        armTargetPosition = -500;
+    }
+
+    public void armToCollectionPosition() {
+        armTargetPosition = 0;
+    }
+
 }
 
