@@ -12,9 +12,10 @@ import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 import org.firstinspires.ftc.robotcore.external.navigation.AxesOrder;
 import org.firstinspires.ftc.robotcore.external.navigation.AxesReference;
 import org.firstinspires.ftc.robotcore.external.navigation.Orientation;
+import org.firstinspires.ftc.robotcore.external.navigation.UnnormalizedAngleUnit;
 import org.firstinspires.ftc.teamcode.Hardware.Constants.MovingPIDConstants;
-import org.firstinspires.ftc.teamcode.Hardware.Constants.MovingPIDConstantsNoVelocity;
-import org.firstinspires.ftc.teamcode.Hardware.Constants.MovingPIDConstantsWithVelocity;
+import org.firstinspires.ftc.teamcode.Hardware.Constants.MovingPIDConstantsRegular;
+import org.firstinspires.ftc.teamcode.Hardware.Constants.MovingPIDConstantsStrafe;
 import org.firstinspires.ftc.teamcode.Hardware.Constants.TurningPIDConstants;
 import org.firstinspires.ftc.teamcode.Hardware.HWDriveTrain;
 
@@ -57,6 +58,10 @@ public abstract class AutonomousBase extends LinearOpMode {
 
     // Time to wait between runs
     public static double WAIT_TIME = 2000;
+
+    // Absolute robot heading
+    public double headingModifier = 0;
+    public double lastHeading = 0;
 
     public void initializeHardware() {
         hwDriveTrain = new HWDriveTrain();
@@ -143,7 +148,11 @@ public abstract class AutonomousBase extends LinearOpMode {
                 integral = 1 / TurningPIDConstants.TURNING_KI;
             }
 
-            idle();
+            telemetry.addData("Target Heading: ", target);
+            telemetry.addData("Heading: ", current_angle);
+            telemetry.addData("Error: ", error);
+            telemetry.addData("Integral: ", integral);
+            telemetry.update();
         }
 
         hwDriveTrain.leftBack.setPower(0);
@@ -166,25 +175,20 @@ public abstract class AutonomousBase extends LinearOpMode {
         encoderDrive(inches, false);
     }
 
-    public void encoderDrive(double inches, boolean use_velocity) {
+    public void encoderDrive(double inches, boolean strafe) {
         MovingPIDConstants pid_constants;
         // Set up constants based on globals and chosen mode
-        if (use_velocity) {
-            pid_constants = new MovingPIDConstantsWithVelocity();
-
-            hwDriveTrain.leftFront.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
-            hwDriveTrain.rightFront.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
-            hwDriveTrain.leftBack.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
-            hwDriveTrain.rightBack.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+        if (strafe) {
+            pid_constants = new MovingPIDConstantsStrafe();
         }
         else {
-            pid_constants = new MovingPIDConstantsNoVelocity();
-
-            hwDriveTrain.leftFront.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
-            hwDriveTrain.rightFront.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
-            hwDriveTrain.leftBack.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
-            hwDriveTrain.rightBack.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+            pid_constants = new MovingPIDConstantsRegular();
         }
+
+        hwDriveTrain.leftFront.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+        hwDriveTrain.rightFront.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+        hwDriveTrain.leftBack.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+        hwDriveTrain.rightBack.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
 
         double target_position;
 
@@ -227,23 +231,18 @@ public abstract class AutonomousBase extends LinearOpMode {
                 heading_error = target_direction - getHeading();
                 double rotation_power = heading_error * pid_constants.HOLD_HEADING_KP;
 
-                hwDriveTrain.leftBack.setPower(base_power + rotation_power);
-                hwDriveTrain.leftFront.setPower(base_power + rotation_power);
-                hwDriveTrain.rightBack.setPower(base_power - rotation_power);
-                hwDriveTrain.rightFront.setPower(base_power - rotation_power);
-
-                //telemetry.addData("Voltage: ", starting_voltage);
-                /*
-                telemetry.addData("Left Front Encoder: ", leftFrontPos);
-                telemetry.addData("Right Front Encoder: ", rightFrontPos);
-                telemetry.addData("Left Back Encoder: ", leftBackPos);
-                telemetry.addData("Right Back Encoder: ", rightBackPos);
-
-                telemetry.addData("Distance Error:", distance_error);
-                telemetry.addData("Heading Error:", heading_error);
-                telemetry.addData("base_power:", base_power);
-
-                */
+                if (strafe) {
+                    hwDriveTrain.leftBack.setPower(base_power + rotation_power);
+                    hwDriveTrain.leftFront.setPower(-base_power + rotation_power);
+                    hwDriveTrain.rightBack.setPower(-base_power - rotation_power);
+                    hwDriveTrain.rightFront.setPower(base_power - rotation_power);
+                }
+                else {
+                    hwDriveTrain.leftBack.setPower(base_power + rotation_power);
+                    hwDriveTrain.leftFront.setPower(base_power + rotation_power);
+                    hwDriveTrain.rightBack.setPower(base_power - rotation_power);
+                    hwDriveTrain.rightFront.setPower(base_power - rotation_power);
+                }
             }
 
             hwDriveTrain.leftBack.setPower(0);
@@ -285,7 +284,23 @@ public abstract class AutonomousBase extends LinearOpMode {
 
     public double getHeading() {
         angles   = imu.getAngularOrientation(AxesReference.INTRINSIC, AxesOrder.ZYX, AngleUnit.DEGREES);
-        return AngleUnit.DEGREES.fromUnit(angles.angleUnit, angles.firstAngle);
+
+        double currentReading = AngleUnit.DEGREES.fromUnit(angles.angleUnit, angles.firstAngle);
+
+        double upperBound = 150;
+        double lowerBound = -150;
+
+        if (lastHeading > upperBound && currentReading < 0) {
+            headingModifier += 1;
+        }
+        else if (lastHeading < lowerBound && currentReading > 0) {
+            headingModifier -= 1;
+        }
+
+        lastHeading = currentReading;
+
+        currentReading += headingModifier * 360;
+        return currentReading;
     }
 
     public void armToTopGoal() {
@@ -295,6 +310,11 @@ public abstract class AutonomousBase extends LinearOpMode {
 
     public void armToDrivingPosition() {
         hwDriveTrain.armToDrivingPosition();
+        waitForArm();
+    }
+
+    public void armToCollectionPosition() {
+        hwDriveTrain.armToCollectionPosition();
         waitForArm();
     }
 
@@ -310,6 +330,14 @@ public abstract class AutonomousBase extends LinearOpMode {
         hwDriveTrain.collector.setPower(0.2);
         robotWait(3000);
         hwDriveTrain.collector.setPower(0);
+    }
+
+    public void scoreDuck() {
+        hwDriveTrain.duckMotor.setPower(-0.5);
+        sleep(1000);
+        hwDriveTrain.duckMotor.setPower(-1);
+        sleep(2000);
+        hwDriveTrain.duckMotor.setPower(0);
     }
 
 

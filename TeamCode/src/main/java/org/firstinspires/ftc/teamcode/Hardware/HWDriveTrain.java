@@ -1,25 +1,14 @@
 package org.firstinspires.ftc.teamcode.Hardware;
 
-import static org.firstinspires.ftc.robotcore.external.BlocksOpModeCompanion.hardwareMap;
-
 import com.qualcomm.hardware.bosch.BNO055IMU;
 import com.qualcomm.robotcore.hardware.CRServo;
-import com.qualcomm.robotcore.hardware.CRServoImplEx;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.robotcore.hardware.HardwareMap;
-import com.qualcomm.robotcore.hardware.Servo;
-import com.qualcomm.robotcore.hardware.VoltageSensor;
 
 import org.firstinspires.ftc.robotcore.external.Telemetry;
-import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
-import org.firstinspires.ftc.robotcore.external.navigation.AxesOrder;
-import org.firstinspires.ftc.robotcore.external.navigation.AxesReference;
 import org.firstinspires.ftc.robotcore.external.navigation.Orientation;
-import org.firstinspires.ftc.teamcode.Hardware.Constants.MovingPIDConstants;
-import org.firstinspires.ftc.teamcode.Hardware.Constants.MovingPIDConstantsNoVelocity;
-import org.firstinspires.ftc.teamcode.Hardware.Constants.MovingPIDConstantsWithVelocity;
 
 
 public class HWDriveTrain {
@@ -118,7 +107,6 @@ public class HWDriveTrain {
         double rightFrontPower = (headingPower * Math.sin(headingAngle) + turn);
         double leftBackPower = (headingPower * Math.sin(headingAngle) - turn);
         double rightBackPower = (headingPower * Math.cos(headingAngle) + turn);
-
 
 
         leftFront.setPower(leftFrontPower * slowDown);

@@ -1,46 +1,31 @@
-package org.firstinspires.ftc.teamcode.Autonomous;
+package org.firstinspires.ftc.teamcode.Autonomous.old;
 
 import com.acmerobotics.dashboard.FtcDashboard;
-import com.acmerobotics.dashboard.config.Config;
 import com.acmerobotics.dashboard.telemetry.MultipleTelemetry;
 import com.qualcomm.hardware.bosch.BNO055IMU;
 import com.qualcomm.hardware.bosch.JustLoggingAccelerationIntegrator;
-import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.hardware.DcMotor;
-import com.qualcomm.robotcore.hardware.VoltageSensor;
-import com.qualcomm.robotcore.util.ElapsedTime;
 
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 import org.firstinspires.ftc.robotcore.external.navigation.AxesOrder;
 import org.firstinspires.ftc.robotcore.external.navigation.AxesReference;
-import org.firstinspires.ftc.robotcore.external.navigation.CurrentUnit;
 import org.firstinspires.ftc.robotcore.external.navigation.Orientation;
-
 import org.firstinspires.ftc.teamcode.Hardware.Constants.MovingPIDConstants;
-import org.firstinspires.ftc.teamcode.Hardware.Constants.MovingPIDConstantsWithVelocity;
-import org.firstinspires.ftc.teamcode.Hardware.HWDriveTrain;
-import org.firstinspires.ftc.teamcode.Hardware.Constants.MovingPIDConstantsNoVelocity;
+import org.firstinspires.ftc.teamcode.Hardware.Constants.MovingPIDConstantsRegular;
+import org.firstinspires.ftc.teamcode.Hardware.Constants.MovingPIDConstantsStrafe;
 import org.firstinspires.ftc.teamcode.Hardware.Constants.TurningPIDConstants;
+import org.firstinspires.ftc.teamcode.Hardware.HWDriveTrain;
 
-import java.util.ArrayList;
+public class RedWarehouseAuto extends LinearOpMode {
 
+    private HWDriveTrain hwDriveTrain;
 
-@Config
-@Autonomous(name = "autonomousDrive")
-public class AutonomousDrive extends LinearOpMode {
-    HWDriveTrain hwDriveTrain;
+    private BNO055IMU imu;
 
-    BNO055IMU imu;
 
     Orientation angles;
 
-    VoltageSensor voltageSensor;
-
-    public ElapsedTime runtime = new ElapsedTime();
-
-    // Save starting voltage
-    //double starting_voltage;
 
 
     static final double COUNTS_PER_MOTOR_REV = 537.7; // GoBuilda 5203 312 rpm
@@ -71,14 +56,8 @@ public class AutonomousDrive extends LinearOpMode {
     public static double WAIT_TIME = 2000;
 
 
-    // Voltage Modifier
-    // private double LOW_VOLTAGE = 12.8;
-    // private double VOLTAGE_SLOPE_DIVISOR = 6;
-
-
     @Override
-    public void runOpMode() {
-
+    public void runOpMode() throws InterruptedException {
         hwDriveTrain = new HWDriveTrain();
 
         hwDriveTrain.init(this.hardwareMap, telemetry);
@@ -122,33 +101,17 @@ public class AutonomousDrive extends LinearOpMode {
 
         waitForStart();
 
-        // Save the initial voltage
-        //starting_voltage = hwDriveTrain.getBatteryVoltage();
+        // Move off the wall
+        encoderDrive(4);
 
-        // Drive off the wall
-        encoderDrive(MOVE_OFF_WALL);
-        // Turn left so the back of the robot faces the carousel
-        turnToPosition(TURN_TOWARDS_C);
-        // Drive backwards to the carousel
-        encoderDrive(MOVE_TOWARDS_WALL);
+        // Turn left
+        turnToPosition(-90);
 
-        // Drive forward a little further
-        hwDriveTrain.rightBack.setPower(0.5);
-        hwDriveTrain.leftBack.setPower(0.5);
-        hwDriveTrain.rightFront.setPower(0.5);
-        hwDriveTrain.leftFront.setPower(0.5);
-        robotWait(500);
-        hwDriveTrain.rightBack.setPower(0);
-        hwDriveTrain.leftBack.setPower(0);
-        hwDriveTrain.rightFront.setPower(0);
-        hwDriveTrain.leftFront.setPower(0);
-
-        // Spin the carousel motor
-        hwDriveTrain.duckMotor.setPower(1);
-        robotWait(5000);
-        hwDriveTrain.duckMotor.setPower(0);
+        // Drive into the warehouse
+        encoderDrive(36);
 
     }
+
 
     public void robotWait(double time) {
         double start_time = System.currentTimeMillis();
@@ -194,15 +157,6 @@ public class AutonomousDrive extends LinearOpMode {
                 integral = 1 / TurningPIDConstants.TURNING_KI;
             }
 
-
-            telemetry.addData("Heading: ", current_angle);
-            telemetry.addData("Error: ", error);
-            telemetry.addData("Power: ", power);
-            telemetry.addData("Integral: ", integral);
-            telemetry.addData("Integral * Ki: ", integral * TurningPIDConstants.TURNING_KI);
-            telemetry.addData("Time Elapsed: ", time_elapsed);
-            telemetry.update();
-
             idle();
         }
 
@@ -230,7 +184,7 @@ public class AutonomousDrive extends LinearOpMode {
         MovingPIDConstants pid_constants;
         // Set up constants based on globals and chosen mode
         if (use_velocity) {
-            pid_constants = new MovingPIDConstantsWithVelocity();
+            pid_constants = new MovingPIDConstantsStrafe();
 
             hwDriveTrain.leftFront.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
             hwDriveTrain.rightFront.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
@@ -238,7 +192,7 @@ public class AutonomousDrive extends LinearOpMode {
             hwDriveTrain.rightBack.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
         }
         else {
-            pid_constants = new MovingPIDConstantsNoVelocity();
+            pid_constants = new MovingPIDConstantsRegular();
 
             hwDriveTrain.leftFront.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
             hwDriveTrain.rightFront.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
@@ -303,16 +257,6 @@ public class AutonomousDrive extends LinearOpMode {
                 telemetry.addData("base_power:", base_power);
 
                 */
-
-                // Show motor current usage
-                ArrayList<Double> currents = new ArrayList<>();
-                currents.add(hwDriveTrain.leftFront.getCurrent(CurrentUnit.MILLIAMPS));
-                currents.add(hwDriveTrain.leftBack.getCurrent(CurrentUnit.MILLIAMPS));
-                currents.add(hwDriveTrain.rightFront.getCurrent(CurrentUnit.MILLIAMPS));
-                currents.add(hwDriveTrain.rightBack.getCurrent(CurrentUnit.MILLIAMPS));
-
-                telemetry.addData("Drive Motor Currents: ", currents.toString());
-                telemetry.update();
             }
 
             hwDriveTrain.leftBack.setPower(0);
@@ -353,7 +297,7 @@ public class AutonomousDrive extends LinearOpMode {
     }
 
     public double getHeading() {
-      angles   = imu.getAngularOrientation(AxesReference.INTRINSIC, AxesOrder.ZYX, AngleUnit.DEGREES);
-      return AngleUnit.DEGREES.fromUnit(angles.angleUnit, angles.firstAngle);
+        angles   = imu.getAngularOrientation(AxesReference.INTRINSIC, AxesOrder.ZYX, AngleUnit.DEGREES);
+        return AngleUnit.DEGREES.fromUnit(angles.angleUnit, angles.firstAngle);
     }
 }

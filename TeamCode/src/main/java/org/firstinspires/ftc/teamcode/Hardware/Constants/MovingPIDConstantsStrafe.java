@@ -3,8 +3,8 @@ package org.firstinspires.ftc.teamcode.Hardware.Constants;
 import com.acmerobotics.dashboard.config.Config;
 
 @Config
-public class MovingPIDConstantsWithVelocity implements MovingPIDConstants {
-    public static double MOVING_KP = 0.0005;
+public class MovingPIDConstantsStrafe implements MovingPIDConstants {
+    public static double MOVING_KP = 0.0018;
     public static double MOVING_KI = 0.00002;
     public static double MOVING_KD = 0;
 

@@ -1,28 +1,22 @@
-package org.firstinspires.ftc.teamcode.Autonomous;
+package org.firstinspires.ftc.teamcode.Autonomous.old;
 
 import com.acmerobotics.dashboard.FtcDashboard;
 import com.acmerobotics.dashboard.telemetry.MultipleTelemetry;
 import com.qualcomm.hardware.bosch.BNO055IMU;
 import com.qualcomm.hardware.bosch.JustLoggingAccelerationIntegrator;
-import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.hardware.DcMotor;
-import com.qualcomm.robotcore.hardware.HardwareMap;
 
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 import org.firstinspires.ftc.robotcore.external.navigation.AxesOrder;
 import org.firstinspires.ftc.robotcore.external.navigation.AxesReference;
-import org.firstinspires.ftc.robotcore.external.navigation.CurrentUnit;
 import org.firstinspires.ftc.robotcore.external.navigation.Orientation;
 import org.firstinspires.ftc.teamcode.Hardware.Constants.MovingPIDConstants;
-import org.firstinspires.ftc.teamcode.Hardware.Constants.MovingPIDConstantsNoVelocity;
-import org.firstinspires.ftc.teamcode.Hardware.Constants.MovingPIDConstantsWithVelocity;
+import org.firstinspires.ftc.teamcode.Hardware.Constants.MovingPIDConstantsRegular;
+import org.firstinspires.ftc.teamcode.Hardware.Constants.MovingPIDConstantsStrafe;
 import org.firstinspires.ftc.teamcode.Hardware.Constants.TurningPIDConstants;
 import org.firstinspires.ftc.teamcode.Hardware.HWDriveTrain;
 
-import java.util.ArrayList;
-
-@Autonomous
 public class BlueWarehouseAuto extends LinearOpMode {
 
     private HWDriveTrain hwDriveTrain;
@@ -199,7 +193,7 @@ public class BlueWarehouseAuto extends LinearOpMode {
         MovingPIDConstants pid_constants;
         // Set up constants based on globals and chosen mode
         if (use_velocity) {
-            pid_constants = new MovingPIDConstantsWithVelocity();
+            pid_constants = new MovingPIDConstantsStrafe();
 
             hwDriveTrain.leftFront.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
             hwDriveTrain.rightFront.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
@@ -207,7 +201,7 @@ public class BlueWarehouseAuto extends LinearOpMode {
             hwDriveTrain.rightBack.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
         }
         else {
-            pid_constants = new MovingPIDConstantsNoVelocity();
+            pid_constants = new MovingPIDConstantsRegular();
 
             hwDriveTrain.leftFront.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
             hwDriveTrain.rightFront.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
