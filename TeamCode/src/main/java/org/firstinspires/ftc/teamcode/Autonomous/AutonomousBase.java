@@ -1,6 +1,7 @@
 package org.firstinspires.ftc.teamcode.Autonomous;
 
 import com.acmerobotics.dashboard.FtcDashboard;
+import com.acmerobotics.dashboard.config.Config;
 import com.acmerobotics.dashboard.telemetry.MultipleTelemetry;
 import com.qualcomm.hardware.bosch.BNO055IMU;
 import com.qualcomm.hardware.bosch.JustLoggingAccelerationIntegrator;
@@ -20,6 +21,7 @@ import org.firstinspires.ftc.teamcode.Hardware.Constants.TurningPIDConstants;
 import org.firstinspires.ftc.teamcode.Hardware.HWDriveTrain;
 
 
+@Config
 public abstract class AutonomousBase extends LinearOpMode {
 
 
@@ -51,13 +53,18 @@ public abstract class AutonomousBase extends LinearOpMode {
 
     public static final double DRIVE_MOTOR_SPEED_ADJUSTMENT = MEASURED_MAXIMUM_TPS / THEORETICAL_MAX_TPS;
 
-    //Define movement constants here so we can change them dynamically in FTC Dashboard
-    public static double MOVE_OFF_WALL = 3;
-    public static double TURN_TOWARDS_C = 87;
-    public static double MOVE_TOWARDS_WALL = -43;
-
     // Time to wait between runs
-    public static double WAIT_TIME = 2000;
+    public static double WAIT_TIME = 250;
+
+    public static double speed = 0;
+    public static double maxSpeed = 1;
+    public static long incrementTime = 5;
+
+    // ramp time in milliseconds
+    public static double rampTime = 1000;
+
+    // steady time
+    public static long steadyTime = 500;
 
     // Absolute robot heading
     public double headingModifier = 0;
@@ -333,11 +340,37 @@ public abstract class AutonomousBase extends LinearOpMode {
     }
 
     public void scoreDuck() {
-        hwDriveTrain.duckMotor.setPower(-0.5);
-        sleep(1000);
-        hwDriveTrain.duckMotor.setPower(-1);
-        sleep(2000);
+
+        double speed = 0;
+        double maxSpeed = 1;
+        long incrementTime = 5;
+
+        // ramp time in milliseconds
+        double rampTime = 1000;
+
+        // steady time
+        long steadyTime = 500;
+
+        double speedIncrement = (maxSpeed - speed) / ((rampTime / incrementTime));
+
+
+        // Ramp up motor
+        for (int i = 0; i < rampTime / incrementTime; i++) {
+            hwDriveTrain.duckMotor.setPower(speed);
+            speed += speedIncrement;
+            sleep(incrementTime);
+        }
+
+        // Hold steady for some amount of time
+        sleep(steadyTime);
+
         hwDriveTrain.duckMotor.setPower(0);
+
+//        hwDriveTrain.duckMotor.setPower(-0.5);
+//        sleep(1000);
+//        hwDriveTrain.duckMotor.setPower(-1);
+//        sleep(2000);
+//        hwDriveTrain.duckMotor.setPower(0);
     }
 
 
