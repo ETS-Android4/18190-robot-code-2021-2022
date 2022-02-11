@@ -76,7 +76,7 @@ public class HWDriveTrain {
         duckMotor.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
         armMotor.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
 
-        duckMotor.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+        duckMotor.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
 
         leftFront.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
         rightFront.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);

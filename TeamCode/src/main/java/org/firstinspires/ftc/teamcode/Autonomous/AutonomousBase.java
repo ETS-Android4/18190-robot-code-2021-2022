@@ -29,7 +29,6 @@ public abstract class AutonomousBase extends LinearOpMode {
 
     public BNO055IMU imu;
 
-
     public Orientation angles;
 
 
@@ -55,16 +54,17 @@ public abstract class AutonomousBase extends LinearOpMode {
 
     // Time to wait between runs
     public static double WAIT_TIME = 250;
-
-    public static double speed = 0;
-    public static double maxSpeed = 1;
-    public static long incrementTime = 5;
-
+    // Duck starting speed
+    public static double DUCK_STARTING_SPEED = 0.2;
+    // Max duck speed
+    public static double MAX_DUCK_SPEED = 1;
+    public static double DUCK_INCREMENT_TIME = 5;
     // ramp time in milliseconds
-    public static double rampTime = 1000;
-
+    public static double DUCK_RAMP_UP_TIME = 300;
     // steady time
-    public static long steadyTime = 500;
+    public static double DUCK_STEADY_TIME = 850;
+
+    public static double DUCK_RAMPDOWN_TIME = 200;
 
     // Absolute robot heading
     public double headingModifier = 0;
@@ -183,6 +183,15 @@ public abstract class AutonomousBase extends LinearOpMode {
     }
 
     public void encoderDrive(double inches, boolean strafe) {
+        encoderDrive(inches, strafe, 30000);
+    }
+
+    public void encoderDrive(double inches, boolean strafe, double timeout) {
+
+        double start_time = System.currentTimeMillis();
+
+        double timeout_time = start_time + timeout;
+
         MovingPIDConstants pid_constants;
         // Set up constants based on globals and chosen mode
         if (strafe) {
@@ -216,7 +225,7 @@ public abstract class AutonomousBase extends LinearOpMode {
             double heading_error = 0;
             double base_power = 0;
 
-            while (opModeIsActive() && Math.abs(distance_error) > 25) {
+            while (opModeIsActive() && Math.abs(distance_error) > 25 && System.currentTimeMillis() < timeout_time) {
 
                 distance_error = target_position - getAveragePosition();
 
@@ -340,37 +349,46 @@ public abstract class AutonomousBase extends LinearOpMode {
     }
 
     public void scoreDuck() {
+        scoreDuck(false);
+    }
 
-        double speed = 0;
-        double maxSpeed = 1;
-        long incrementTime = 5;
+    public void scoreDuck(boolean reverse) {
 
-        // ramp time in milliseconds
-        double rampTime = 1000;
+        double speed = DUCK_STARTING_SPEED;
 
-        // steady time
-        long steadyTime = 500;
-
-        double speedIncrement = (maxSpeed - speed) / ((rampTime / incrementTime));
+        double speedIncrement = (MAX_DUCK_SPEED - speed) / ((DUCK_RAMP_UP_TIME / DUCK_INCREMENT_TIME));
 
 
         // Ramp up motor
-        for (int i = 0; i < rampTime / incrementTime; i++) {
-            hwDriveTrain.duckMotor.setPower(speed);
+        for (int i = 0; i < DUCK_RAMP_UP_TIME / DUCK_INCREMENT_TIME; i++) {
+            if (reverse) {
+                hwDriveTrain.duckMotor.setPower(-speed);
+            }
+            else {
+                hwDriveTrain.duckMotor.setPower(speed);
+            }
             speed += speedIncrement;
-            sleep(incrementTime);
+            sleep(Double.valueOf(DUCK_INCREMENT_TIME).longValue());
         }
 
         // Hold steady for some amount of time
-        sleep(steadyTime);
+        sleep(Double.valueOf(DUCK_STEADY_TIME).longValue());
+
+        double rampDownIncrement = (speed) / (DUCK_RAMPDOWN_TIME / DUCK_INCREMENT_TIME);
+
+        for (int i = 0; i < DUCK_RAMPDOWN_TIME / DUCK_INCREMENT_TIME; i++) {
+            if (reverse) {
+                hwDriveTrain.duckMotor.setPower(-speed);
+            }
+            else {
+                hwDriveTrain.duckMotor.setPower(speed);
+            }
+            speed -= speedIncrement;
+            sleep(Double.valueOf(DUCK_INCREMENT_TIME).longValue());
+        }
 
         hwDriveTrain.duckMotor.setPower(0);
 
-//        hwDriveTrain.duckMotor.setPower(-0.5);
-//        sleep(1000);
-//        hwDriveTrain.duckMotor.setPower(-1);
-//        sleep(2000);
-//        hwDriveTrain.duckMotor.setPower(0);
     }
 
 
